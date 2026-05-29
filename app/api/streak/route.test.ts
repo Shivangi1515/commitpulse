@@ -1058,6 +1058,15 @@ describe('GET /api/streak', () => {
       expect(body).toContain('<svg');
       expect(body).toContain('</svg>');
     });
+
+    it('passes custom font name and emits Google Fonts import under theme=auto', async () => {
+      const response = await GET(makeRequest({ user: 'octocat', theme: 'auto', font: 'Inter' }));
+      const body = await response.text();
+
+      expect(response.status).toBe(200);
+      expect(body).toContain('family=Inter&display=swap');
+      expect(body).toContain('"Inter", sans-serif');
+    });
   });
 
   describe('stale-while-revalidate cache header', () => {
