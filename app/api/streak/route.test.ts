@@ -731,26 +731,27 @@ describe('GET /api/streak', () => {
       const response = await GET(makeRequest({ user: 'octocat', tz: 'Not/ATimezone' }));
 
       expect(response.status).toBe(400);
-      const body = await response.text();
-      expect(body).toContain('Invalid "tz" parameter');
+      const body = await response.json();
+      expect(body.details.fieldErrors.tz[0]).toContain('Invalid timezone');
     });
 
-    it('returns 400 and names the bad value in the error message', async () => {
+    it('returns 400 and names the bad value in the field error', async () => {
       const response = await GET(makeRequest({ user: 'octocat', tz: 'garbage' }));
-      const body = await response.text();
+      const body = await response.json();
 
-      expect(body).toContain('garbage');
+      expect(response.status).toBe(400);
+      expect(body.details.fieldErrors.tz[0]).toContain('Invalid timezone');
     });
 
-    it('escapes invalid timezone values before rendering the error SVG', async () => {
+    it('is not vulnerable to XSS via tz parameter', async () => {
       const response = await GET(
         makeRequest({ user: 'octocat', tz: '</text><script>alert(1)</script>' })
       );
-      const body = await response.text();
+      const body = await response.json();
 
       expect(response.status).toBe(400);
-      expect(body).toContain('&lt;/text&gt;&lt;script&gt;alert(1)&lt;/script&gt;');
-      expect(body).not.toContain('</text><script>');
+      // Zod validates the input and returns a JSON error — no raw user input reflected
+      expect(body.details.fieldErrors.tz[0]).toContain('Invalid timezone');
     });
 
     it('returns 200 with a valid IANA timezone', async () => {
