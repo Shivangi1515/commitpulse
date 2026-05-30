@@ -1,5 +1,5 @@
 // lib/validations.ts
-
+import { supportedLanguages } from './i18n/badgeLabels';
 import { z } from 'zod';
 import {
   isValidHex,
@@ -188,7 +188,7 @@ export const streakParamsSchema = z.object({
   hide_title: z.string().optional().transform(toBooleanFlag),
   hide_background: z.string().optional().transform(toBooleanFlag),
   hide_stats: z.string().optional().transform(toBooleanFlag),
-  lang: z.string().optional().default('en'),
+  lang: z.enum(supportedLanguages).catch('en').default('en'),
   // Unknown view values fall back to the default dashboard view.
   view: z.enum(['default', 'monthly']).catch('default').default('default'),
   // Invalid delta formats fall back to percentage mode.
