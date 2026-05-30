@@ -201,6 +201,8 @@ describe('computeTowers edge cases', () => {
     expect(testTower.contributionCount).toBe(60);
     // Assert h > 0 (not ghost despite 0 normal contributions)
     expect(testTower.h).toBeGreaterThan(0);
+    // Assert intensityLevel is calculated correctly based on lines of code (60/60 = 100%, so intensity 4)
+    expect(testTower.intensityLevel).toBe(4);
   });
 });
 
