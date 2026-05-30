@@ -723,4 +723,34 @@ describe('calculateWrappedStats', () => {
     // Assert the ratio is exactly 100%
     expect(result.weekendRatio).toBe(100);
   });
+
+  it('handles an entire year of zero contributions without crashing', () => {
+    // Build a calendar with proper dates spanning a full year (52 weeks)
+    const calendar: ContributionCalendar = {
+      totalContributions: 0,
+      weeks: Array.from({ length: 52 }, (_, weekIndex) => {
+        const startDay = weekIndex * 7;
+        return {
+          contributionDays: Array.from({ length: 7 }, (_, dayIndex) => {
+            const totalDays = startDay + dayIndex;
+            const date = new Date(2024, 0, 1); // Start from Jan 1, 2024
+            date.setDate(date.getDate() + totalDays);
+            const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
+            return {
+              contributionCount: 0,
+              date: dateStr,
+            };
+          }),
+        };
+      }),
+    };
+
+    const result = calculateStreak(calendar);
+
+    expect(result.currentStreak).toBe(0);
+    expect(result.longestStreak).toBe(0);
+    expect(result.totalContributions).toBe(0);
+    expect(result.todayDate).toBeDefined();
+    expect(result.todayDate).toMatch(/^\d{4}-\d{2}-\d{2}$/); // Valid YYYY-MM-DD format
+  });
 });
