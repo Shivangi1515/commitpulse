@@ -426,6 +426,13 @@ describe('TTLCache', () => {
   });
 
   describe('edge cases and error handling', () => {
+    // FIX: New test explicitly targeting the -5000 boundary for Issue #1398
+    it('throws RangeError when setting a value with -5000 TTL', () => {
+      const cache = new TTLCache<string>();
+      expect(() => cache.set('key', 'value', -5000)).toThrow(RangeError);
+      cache.destroy();
+    });
+
     it('throws RangeError when ttlMs is 0 or negative', () => {
       const cache = new TTLCache<string>();
       expect(() => cache.set('key', 'value', 0)).toThrow(RangeError);
@@ -473,6 +480,7 @@ describe('TTLCache', () => {
       expect([null, 'lived']).toContain(result);
       cache.destroy();
     });
+
     it('does not throw when ttlMs is Number.EPSILON', () => {
       const cache = new TTLCache<string>();
 
