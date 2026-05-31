@@ -634,7 +634,10 @@ function StatItem({ value, label, color }: { value: string; label: string; color
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    if (!valueRef.current) return;
+    if (!valueRef.current || typeof window === 'undefined' || !('IntersectionObserver' in window)) {
+      setIsVisible(true); // fallback: show immediately in test/SSR env
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
