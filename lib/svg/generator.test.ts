@@ -14,6 +14,7 @@ import {
 } from './generator';
 import type { BadgeParams, ContributionCalendar, StreakStats, MonthlyStats } from '../../types';
 import { hexColor } from './sanitizer';
+import { themes } from './themes';
 
 describe('generateSVG', () => {
   const mockStats: StreakStats = {
@@ -866,6 +867,29 @@ describe('generateSVG', () => {
       expect(extendedLongUsername.length).toBeGreaterThan(30);
       expect(svg).toContain('ABCDEFGHIJKL...');
       expect(svg).not.toContain('ABCDEFGHIJKLMNOPQRSTUVWXYZ');
+    });
+  });
+
+  describe('verify all supported themes produce valid SVG output', () => {
+    it('generates a valid SVG and contains the theme accent color for each supported theme', () => {
+      for (const theme of Object.values(themes)) {
+        const svg = generateSVG(
+          mockStats,
+          {
+            user: 'octocat',
+            bg: theme.bg,
+            text: theme.text,
+            accent: theme.accent,
+            speed: '8s',
+            scale: 'linear',
+          } as unknown as BadgeParams,
+          mockCalendar
+        );
+
+        expect(svg).toContain('<svg');
+        expect(svg).toContain('</svg>');
+        expect(svg.toLowerCase()).toContain(theme.accent.toLowerCase());
+      }
     });
   });
 });

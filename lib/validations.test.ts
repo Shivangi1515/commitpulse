@@ -1031,3 +1031,33 @@ describe('streakParamsSchema — layout query validation boundaries (Variation 2
     }
   });
 });
+
+/* ==========================================================================
+ * USER PARAMETER — QUERY VALIDATION BOUNDARIES (VARIATION 3)
+ * ========================================================================== */
+
+describe('streakParamsSchema user maxLength validation boundaries (Variation 3)', () => {
+  it('rejects a GitHub username that exceeds the 39 character length threshold', () => {
+    const invalidPayload = {
+      user: 'a'.repeat(40),
+    };
+
+    const parseResult = streakParamsSchema.safeParse(invalidPayload);
+
+    expect(parseResult.success).toBe(false);
+    if (!parseResult.success) {
+      const fieldErrors = parseResult.error.flatten().fieldErrors;
+      expect(fieldErrors.user).toBeDefined();
+      expect(fieldErrors.user?.[0]).toContain('cannot exceed 39 characters');
+    }
+  });
+
+  it('accepts a username exactly at the upper limit of 39 characters', () => {
+    const validPayload = {
+      user: 'a'.repeat(39),
+    };
+
+    const parseResult = streakParamsSchema.safeParse(validPayload);
+    expect(parseResult.success).toBe(true);
+  });
+});

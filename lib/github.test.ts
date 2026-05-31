@@ -1527,6 +1527,83 @@ describe('GitHub API cache behavior', () => {
 
     expect(fetch).toHaveBeenCalledTimes(1);
   });
+
+  it('cache hit: second fetchContributedRepos call uses cached value', async () => {
+    const mockNodes = [{ name: 'cached-repo' }];
+    vi.mocked(fetch).mockResolvedValue(
+      mockResponse({
+        data: {
+          user: {
+            repositoriesContributedTo: {
+              nodes: mockNodes,
+            },
+          },
+        },
+      })
+    );
+
+    await fetchContributedRepos('octocat');
+    await fetchContributedRepos('octocat');
+
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('dedupes concurrent fetchContributedRepos requests for the same cold cache key', async () => {
+    let resolveFetch!: (response: Response) => void;
+    vi.mocked(fetch).mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        })
+    );
+
+    const requests = Promise.all([
+      fetchContributedRepos('octocat'),
+      fetchContributedRepos('octocat'),
+      fetchContributedRepos('octocat'),
+    ]);
+
+    await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(1));
+
+    resolveFetch(
+      mockResponse({
+        data: {
+          user: {
+            repositoriesContributedTo: {
+              nodes: [{ name: 'deduped-repo' }],
+            },
+          },
+        },
+      })
+    );
+
+    const results = await requests;
+    expect(results.map((repos) => repos[0]?.name)).toEqual([
+      'deduped-repo',
+      'deduped-repo',
+      'deduped-repo',
+    ]);
+  });
+
+  it('refresh bypass: bypassCache=true forces fresh fetchContributedRepos fetch', async () => {
+    const mockNodes = [{ name: 'repo' }];
+    vi.mocked(fetch).mockImplementation(async () =>
+      mockResponse({
+        data: {
+          user: {
+            repositoriesContributedTo: {
+              nodes: mockNodes,
+            },
+          },
+        },
+      })
+    );
+
+    await fetchContributedRepos('octocat');
+    await fetchContributedRepos('octocat', { bypassCache: true });
+
+    expect(fetch).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('generateAchievements', () => {

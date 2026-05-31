@@ -409,11 +409,15 @@ describe('TTLCache', () => {
       const matrix = [
         [1, 2],
         [3, 4],
+        [5, 6],
       ];
 
       cache.set('matrix', matrix, 60_000);
 
-      expect(cache.get('matrix')).toEqual(matrix);
+      const cached = cache.get('matrix');
+
+      expect(cached).toEqual(matrix);
+      expect(cached?.[2]?.[1]).toBe(6);
 
       cache.destroy();
     });

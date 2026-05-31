@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET, POST } from './route';
+import dbConnect from '@/lib/mongodb';
 
 // Mock dependencies
 vi.mock('@/lib/mongodb', () => ({ default: vi.fn() }));
@@ -88,6 +89,7 @@ describe('POST /api/notify', () => {
     expect(res.status).toBe(400);
     const data = await res.json();
     expect(data.message).toContain('Malformed JSON');
+    expect(dbConnect).not.toHaveBeenCalled();
   });
 
   // ── Rate limiting ────────────────────────────────────────────────────────
