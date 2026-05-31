@@ -73,8 +73,10 @@
     "vitest": "^4.1.4"
   },
   "optionalDependencies": {
+    "@resvg/resvg-js-linux-x64-gnu": "^2.6.2",
     "@rolldown/binding-linux-x64-gnu": "^1.0.3",
     "@tailwindcss/oxide-linux-x64-gnu": "^4.3.0",
+    "@unrs/resolver-binding-linux-x64-gnu": "^1.12.2",
     "lightningcss-linux-x64-gnu": "^1.32.0"
   }
 }

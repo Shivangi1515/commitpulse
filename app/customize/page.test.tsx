@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { AnchorHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import CustomizePage from './page';
 
 type MockLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
