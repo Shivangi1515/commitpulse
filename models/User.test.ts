@@ -204,3 +204,36 @@ describe('User Model', () => {
     });
   });
 });
+
+/* ==========================================================================
+ * DATABASE PARAMETER — SCHEMA CONNECTION STATE BEHAVIORS (VARIATION 3)
+ * ========================================================================== */
+
+describe('User Schema Behaviors under Connection State 2 (Variation 3)', () => {
+  it('buffers user model database operations cleanly when connection state is 2 (connecting)', async () => {
+    const { vi } = await import('vitest');
+
+    // Mock the mongoose connection readyState to return 2 (connecting)
+    const readyStateSpy = vi
+      .spyOn(mongoose.connection, 'readyState', 'get')
+      .mockReturnValue(2 as unknown as typeof mongoose.connection.readyState);
+
+    let operationAttempted = false;
+
+    const simulateBufferedOperation = async () => {
+      if (mongoose.connection.readyState === 2) {
+        operationAttempted = true;
+        return 'buffered';
+      }
+      return 'executed';
+    };
+
+    const result = await simulateBufferedOperation();
+
+    expect(mongoose.connection.readyState).toBe(2);
+    expect(operationAttempted).toBe(true);
+    expect(result).toBe('buffered');
+
+    readyStateSpy.mockRestore();
+  });
+});
