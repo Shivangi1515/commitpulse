@@ -23,7 +23,13 @@ export function toEmptyStringAsUndefined(val?: string): string | undefined {
 }
 
 export function toValidTheme(val?: string): string | undefined {
-  return val && Object.hasOwn(themes, val) ? val : 'dark';
+  if (!val) return 'dark';
+  const normalized = val.toLowerCase();
+  if (normalized === 'auto' || normalized === 'random') {
+    return normalized;
+  }
+  const matchedKey = Object.keys(themes).find((key) => key.toLowerCase() === normalized);
+  return matchedKey || 'dark';
 }
 
 export function toValidHexColor(defaultColor: string) {
@@ -67,6 +73,22 @@ function dimensionParam(name: string, min: number, max: number) {
     )
     .transform(toDimensionValue);
 }
+
+function isValidTimeZone(tz?: string): boolean {
+  if (!tz) return true;
+
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+const timeZoneParam = z
+  .string()
+  .optional()
+  .refine(isValidTimeZone, { message: 'Invalid timezone' });
 
 export const GITHUB_USERNAME_REGEX = /^[a-zA-Z0-9](?:[a-zA-Z0-9]|-(?=[a-zA-Z0-9]))*$/;
 
@@ -112,9 +134,17 @@ const baseStreakParamsSchema = z.object({
   theme: z
     .string()
     .optional()
+    .transform((val) => {
+      if (val === undefined || val === '') return 'dark';
+      const normalized = val.toLowerCase();
+      if (normalized === 'auto' || normalized === 'random') {
+        return normalized;
+      }
+      const matchedKey = Object.keys(themes).find((key) => key.toLowerCase() === normalized);
+      return matchedKey || val;
+    })
     .refine(
       (val) => {
-        if (val === undefined || val === '') return true;
         return val === 'auto' || val === 'random' || Object.hasOwn(themes, val);
       },
       {
@@ -230,26 +260,12 @@ const baseStreakParamsSchema = z.object({
       },
       { message: 'Invalid "date" format. Use ISO 8601.' }
     ),
-  tz: z
-    .string()
-    .optional()
-    .refine(
-      (val) => {
-        if (!val) return true;
-        try {
-          new Intl.DateTimeFormat(undefined, { timeZone: val });
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      { message: 'Invalid timezone. Must be a valid IANA timezone (e.g. America/New_York).' }
-    ),
   refresh: z.string().optional().transform(toRefreshFlag),
   hide_title: z.string().optional().transform(toBooleanFlag),
   hide_background: z.string().optional().transform(toBooleanFlag),
   hide_stats: z.string().optional().transform(toBooleanFlag),
   lang: z.enum(supportedLanguages).catch('en').default('en'),
+  tz: timeZoneParam,
   // Unknown view values fall back to the default dashboard view.
   view: z.enum(['default', 'monthly', 'heatmap', 'pulse']).catch('default').default('default'),
   // Invalid delta formats fall back to percentage mode.
@@ -421,7 +437,7 @@ export const statsParamsSchema = z.object({
       message: 'Invalid GitHub username',
     }),
   refresh: z.string().optional().transform(toRefreshFlag),
-  tz: z.string().optional(),
+  tz: timeZoneParam,
 });
 
 export const wrappedParamsSchema = z.object({
@@ -446,7 +462,7 @@ export const wrappedParamsSchema = z.object({
         message: 'GitHub was founded in 2008. Please provide a year of 2008 or later.',
       }
     ),
-  theme: z.string().default('dark'),
+  theme: z.string().optional().transform(toValidTheme).default('dark'),
   bg: z
     .string()
     .optional()
