@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactElement } from 'react';
+import { useCallback, useEffect, useRef, useState, Suspense, type ReactElement } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { validateGitHubUsername } from '@/lib/validations';
 import Link from 'next/link';
@@ -24,7 +24,7 @@ import { getExportSnippet, buildQueryParams } from './utils';
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function CustomizePage(): ReactElement {
+function CustomizePageInner(): ReactElement {
   const [username, setUsername] = useState('');
   const [theme, setTheme] = useState('dark');
   const [bgHex, setBgHex] = useState('');
@@ -611,5 +611,13 @@ export default function CustomizePage(): ReactElement {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CustomizePage(): ReactElement {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-transparent" />}>
+      <CustomizePageInner />
+    </Suspense>
   );
 }
