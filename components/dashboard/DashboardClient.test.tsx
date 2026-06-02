@@ -217,6 +217,30 @@ describe('DashboardClient', () => {
     vi.clearAllMocks();
   });
 
+  const renderInCompareMode = async () => {
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockSecondData,
+    });
+    vi.stubGlobal('fetch', mockFetch);
+
+    render(
+      <DashboardClient initialData={mockInitialData} username="Shivangi1515" period={mockPeriod} />
+    );
+
+    fireEvent.click(screen.getByText('Compare Profile'));
+    fireEvent.change(screen.getByPlaceholderText('Enter GitHub Username'), {
+      target: { value: 'JhaSourav07' },
+    });
+    fireEvent.click(screen.getByText('Compare'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Share Comparison')).toBeDefined();
+    });
+
+    vi.clearAllMocks();
+  };
+
   it('renders standard single profile view by default', () => {
     render(
       <DashboardClient initialData={mockInitialData} username="Shivangi1515" period={mockPeriod} />
@@ -375,6 +399,76 @@ describe('DashboardClient', () => {
       expect(toast.error).toHaveBeenCalledWith('Failed to copy dashboard link');
     });
     expect(toast.success).not.toHaveBeenCalledWith('Link copied to clipboard!');
+  });
+
+  it('copies the comparison link when native sharing is unavailable', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'share', {
+      value: undefined,
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+
+    await renderInCompareMode();
+
+    fireEvent.click(screen.getByText('Share Comparison'));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/dashboard/Shivangi1515?compare=JhaSourav07`
+      );
+      expect(toast.success).toHaveBeenCalledWith('Comparison link copied!');
+    });
+  });
+
+  it('shows an error toast when comparison link copy fails', async () => {
+    const writeText = vi.fn().mockRejectedValue(new Error('Permission denied'));
+    Object.defineProperty(navigator, 'share', {
+      value: undefined,
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+
+    await renderInCompareMode();
+
+    fireEvent.click(screen.getByText('Share Comparison'));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(
+        `${window.location.origin}/dashboard/Shivangi1515?compare=JhaSourav07`
+      );
+      expect(toast.error).toHaveBeenCalledWith('Failed to share comparison link');
+    });
+    expect(toast.success).not.toHaveBeenCalledWith('Comparison link copied!');
+  });
+
+  it('does not show an error toast when native comparison sharing is cancelled', async () => {
+    const share = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error('AbortError'), { name: 'AbortError' }));
+    Object.defineProperty(navigator, 'share', {
+      value: share,
+      configurable: true,
+    });
+
+    await renderInCompareMode();
+
+    fireEvent.click(screen.getByText('Share Comparison'));
+
+    await waitFor(() => {
+      expect(share).toHaveBeenCalledWith({
+        title: 'Shivangi1515 vs JhaSourav07',
+        text: 'Check out this GitHub profile comparison',
+        url: `${window.location.origin}/dashboard/Shivangi1515?compare=JhaSourav07`,
+      });
+    });
+    expect(toast.error).not.toHaveBeenCalledWith('Failed to share comparison link');
   });
 
   // =========================================================================

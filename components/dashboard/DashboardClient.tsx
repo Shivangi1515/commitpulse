@@ -472,8 +472,12 @@ export default function DashboardClient({
         await navigator.clipboard.writeText(compareUrl);
         toast.success('Comparison link copied!');
       }
-    } catch {
-      // user cancelled share dialog
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        return;
+      }
+
+      toast.error('Failed to share comparison link');
     }
   };
 
