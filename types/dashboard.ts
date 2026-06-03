@@ -55,10 +55,10 @@ export interface Achievement {
   icon: string;
   isUnlocked: boolean;
 
-  type?: 'contributions' | 'streak';
-  threshold?: number;
-  currentValue?: number;
-  progress?: number;
+  type: 'contributions' | 'streak' | 'behavior';
+  threshold: number;
+  currentValue: number;
+  progress: number; // 0–100
 }
 
 export interface CommitClockData {
@@ -69,6 +69,7 @@ export interface CommitClockData {
 export interface DashboardExportData {
   stats: UserStats;
   languages: LanguageData[];
+  activity?: ActivityData[];
 }
 
 /* ==========================================================================
@@ -82,10 +83,23 @@ export interface WrappedStats {
   busiestMonth: string;
   weekendRatio: number;
   topLanguage: string;
+  calendar: ContributionCalendar;
 }
 
 export interface OrgDashboardData {
   profile: UserProfile;
   stats: UserStats;
   calendar: ContributionCalendar;
+}
+
+export interface Repository {
+  name: string;
+  description: string | null;
+  stargazerCount: number;
+  forkCount: number;
+  url: string;
+  primaryLanguage: {
+    name: string;
+    color: string;
+  } | null;
 }
