@@ -1,4 +1,5 @@
 import { describe, it, expectTypeOf } from 'vitest';
+import type React from 'react';
 import type { ActivityData } from '@/types/dashboard';
 import ActivityLandscape, { getFilteredData } from './ActivityLandscape';
 
@@ -26,7 +27,7 @@ describe('ActivityLandscape Type Compiler Validation', () => {
     expectTypeOf<ReturnType<typeof getFilteredData>>().toEqualTypeOf<ActivityData[]>();
   });
 
-  it('exports ActivityLandscape as a callable React component', () => {
-    expectTypeOf(ActivityLandscape).toBeFunction();
+  it('exports ActivityLandscape as a React component type', () => {
+    expectTypeOf(ActivityLandscape).toMatchTypeOf<React.ComponentType<ActivityLandscapeProps>>();
   });
 });
