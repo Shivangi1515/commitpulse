@@ -308,6 +308,8 @@ export default function LandingPageClient() {
   } | null>(null);
   const guideRef = useRef<HTMLDivElement>(null);
   const heroRef = useRef<HTMLDivElement>(null);
+  const scrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const copiedTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { searches, addSearch, clearSearches, removeSearch } = useRecentSearches();
   const [mounted, setMounted] = useState(false);
 
@@ -350,9 +352,12 @@ export default function LandingPageClient() {
   const previewUsername = instantUsername || debouncedUsername;
   const hasUsername = previewUsername.length > 0;
 
-  const badgeUrl = `/api/streak?user=${previewUsername}`;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://commitpulse.vercel.app';
-  const markdown = `![CommitPulse](${siteUrl}/api/streak?user=${trimmedUsername})`;
+  const badgeUrl = `/api/streak?user=${encodeURIComponent(previewUsername)}`;
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://commitpulse.vercel.app').replace(
+    /\/$/,
+    ''
+  );
+  const markdown = `![CommitPulse](${siteUrl}/api/streak?user=${encodeURIComponent(trimmedUsername)})`;
 
   const badgeLoaded = badgeResult?.username === previewUsername && badgeResult?.status === 'loaded';
   const badgeError = badgeResult?.username === previewUsername && badgeResult?.status === 'error';
@@ -416,11 +421,19 @@ export default function LandingPageClient() {
     trackUser(trimmedUsername);
     addSearch(trimmedUsername);
     setCopied(true);
-    setTimeout(() => {
+    scrollTimeoutRef.current = setTimeout(() => {
       guideRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
-    setTimeout(() => setCopied(false), 3000);
+    if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+    copiedTimeoutRef.current = setTimeout(() => setCopied(false), 3000);
   };
+
+  useEffect(() => {
+    return () => {
+      if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+      if (copiedTimeoutRef.current) clearTimeout(copiedTimeoutRef.current);
+    };
+  }, []);
 
   const DownloadSVG = () => {
     const link = document.createElement('a');
@@ -864,7 +877,9 @@ export default function LandingPageClient() {
                 </button>
                 <Link
                   href={
-                    mounted && trimmedUsername.length > 0 ? `/dashboard/${trimmedUsername}` : '/'
+                    mounted && trimmedUsername.length > 0
+                      ? `/dashboard/${encodeURIComponent(trimmedUsername)}`
+                      : '/'
                   }
                   suppressHydrationWarning
                   aria-disabled={!mounted || trimmedUsername.length === 0}

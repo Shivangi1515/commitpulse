@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import LandingPageClient from './components/LandingPageClient';
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'https://commitpulse.vercel.app'),
   title: 'CommitPulse | 3D Isometric GitHub Contribution Graph',
   description:
     'Transform your GitHub contribution history into a cinematic, 3D isometric SVG monolith. Drop it into your README and visualize your developer rhythm with real-time accuracy.',
@@ -31,7 +32,6 @@ export const metadata: Metadata = {
       'Generate a cinematic, isometric 3D SVG of your GitHub contributions for your README.',
   },
 };
-
 
 export default function LandingPage() {
   return <LandingPageClient />;
