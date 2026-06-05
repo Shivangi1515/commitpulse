@@ -1523,11 +1523,15 @@ export async function getFullDashboardData(username: string, options: FetchOptio
 
 export async function getWrappedData(
   username: string,
-  year: string,
+  year?: string,
   options?: FetchOptions
 ): Promise<import('../types/dashboard').WrappedStats> {
-  const from = `${year}-01-01T00:00:00Z`;
-  const to = `${year}-12-31T23:59:59Z`;
+  const trimmedYear = typeof year === 'string' ? year.trim() : '';
+  const fallbackYear = new Date().getFullYear().toString();
+  const normalizedYear = /^\d{4}$/.test(trimmedYear) ? trimmedYear : fallbackYear;
+
+  const from = `${normalizedYear}-01-01T00:00:00Z`;
+  const to = `${normalizedYear}-12-31T23:59:59Z`;
   const fetchOptions: FetchOptions = {
     from,
     to,
@@ -1556,7 +1560,7 @@ export async function getWrappedData(
     monthTotals[month] = (monthTotals[month] || 0) + day.contributionCount;
   }
   const busiestMonth =
-    Object.entries(monthTotals).sort((a, b) => b[1] - a[1])[0]?.[0] ?? `${year}-01`;
+    Object.entries(monthTotals).sort((a, b) => b[1] - a[1])[0]?.[0] ?? `${normalizedYear}-01`;
 
   const weekendDays = allDays.filter((d) => {
     const dow = new Date(d.date).getUTCDay();

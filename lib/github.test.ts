@@ -2161,9 +2161,11 @@ describe('getWrappedData', () => {
   it('falls back to Unknown when repos have no language data', async () => {
     vi.mocked(fetch).mockImplementation(async (url) => {
       const urlStr = typeof url === 'string' ? url : (url?.toString() ?? '');
+
       if (urlStr.includes('/repos')) {
         return mockResponse([{ language: null }, { language: null }]);
       }
+
       return mockResponse({
         data: {
           user: {
@@ -2174,7 +2176,9 @@ describe('getWrappedData', () => {
         },
       });
     });
+
     const result = await getWrappedData('octocat', '2024');
+
     expect(result.topLanguage).toBe('Unknown');
   });
 
@@ -2207,6 +2211,48 @@ describe('getWrappedData', () => {
 
     expect(body.variables.from).toBe('2024-01-01T00:00:00Z');
     expect(body.variables.to).toBe('2024-12-31T23:59:59Z');
+  });
+
+  it('falls back to the current-year date range when wrapped year is missing or partial', async () => {
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      const urlStr = typeof url === 'string' ? url : (url?.toString() ?? '');
+
+      if (urlStr.includes('/repos')) {
+        return mockResponse([]);
+      }
+
+      return mockResponse({
+        data: {
+          user: {
+            contributionsCollection: {
+              contributionCalendar: mockCalendar,
+            },
+          },
+        },
+      });
+    });
+
+    const currentYear = new Date().getFullYear();
+    const fallbackRange = {
+      from: `${currentYear}-01-01T00:00:00Z`,
+      to: `${currentYear}-12-31T23:59:59Z`,
+    };
+
+    for (const year of [undefined, '', ' '] as unknown as string[]) {
+      vi.clearAllMocks();
+      clearGitHubApiCacheForTests();
+
+      await getWrappedData('octocat', year);
+
+      const graphQLCall = vi
+        .mocked(fetch)
+        .mock.calls.find(([url]) => url.toString().includes('/graphql'));
+
+      const body = JSON.parse(graphQLCall?.[1]?.body as string);
+
+      expect(body.variables.from).toBe(fallbackRange.from);
+      expect(body.variables.to).toBe(fallbackRange.to);
+    }
   });
 });
 
