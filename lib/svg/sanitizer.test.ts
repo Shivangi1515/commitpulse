@@ -41,6 +41,22 @@ describe('SVG Sanitizer Utilities', () => {
       expect(isValidHex(null as unknown as string)).toBe(false);
       expect(isValidHex('')).toBe(false);
     });
+
+    it('returns false for an empty string', () => {
+      expect(isValidHex('')).toBe(false);
+    });
+
+    it('returns false for just a hash symbol', () => {
+      expect(isValidHex('#')).toBe(false);
+    });
+
+    it('returns false for undefined input', () => {
+      expect(isValidHex(undefined)).toBe(false);
+    });
+
+    it('returns false for invalid length (7 characters)', () => {
+      expect(isValidHex('fffffff')).toBe(false);
+    });
   });
 
   describe('hexColor', () => {
