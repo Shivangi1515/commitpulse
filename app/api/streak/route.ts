@@ -101,6 +101,7 @@ export async function GET(request: Request) {
       format,
       days,
       badges,
+      entrance,
     } = parseResult.data;
     const normalizedView = view as 'default' | 'monthly' | 'heatmap' | 'pulse';
     const themeName = theme || 'dark';
@@ -233,6 +234,7 @@ export async function GET(request: Request) {
       glow,
       animate,
       badges,
+      entrance,
     };
 
     let calendar;
