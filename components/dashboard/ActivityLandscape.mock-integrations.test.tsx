@@ -180,7 +180,7 @@ describe('ActivityLandscape: Asynchronous Service Layer Mocking & Cache Behavior
      TEST 2: Cache is checked BEFORE API call (cache hit)
      ======================================================== */
   it('Test 2: should check cache layer BEFORE triggering API call, and use cached data on hit', async () => {
-    const cachedActivityData = [
+    const cachedActivityData: ActivityData[] = [
       { date: '2026-04-20', count: 8, intensity: 2 },
       { date: '2026-04-21', count: 12, intensity: 3 },
     ];
@@ -255,7 +255,7 @@ describe('ActivityLandscape: Asynchronous Service Layer Mocking & Cache Behavior
      TEST 5: Successful response writes to cache layer
      ======================================================== */
   it('Test 5: should verify successful API response writes to cache layer', async () => {
-    const mockActivityResponse = [
+    const mockActivityResponse: ActivityData[] = [
       { date: '2026-05-10', count: 20, intensity: 4 },
       { date: '2026-05-11', count: 25, intensity: 4 },
       { date: '2026-05-12', count: 18, intensity: 3 },
