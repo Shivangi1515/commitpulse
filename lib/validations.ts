@@ -14,6 +14,11 @@ export function toBooleanFlag(val?: string): boolean {
   return val === 'true' || val === '1';
 }
 
+export function toGlowFlag(val?: string): boolean {
+  if (val === undefined) return true;
+  return val === 'true' || val === '1';
+}
+
 export function toRefreshFlag(val?: string): boolean {
   return val === 'true';
 }
@@ -270,7 +275,10 @@ const baseStreakParamsSchema = z.object({
   lang: z.enum(supportedLanguages).catch('en').default('en'),
   tz: timeZoneParam,
   // Unknown view values fall back to the default dashboard view.
-  view: z.enum(['default', 'monthly', 'heatmap', 'pulse']).catch('default').default('default'),
+  view: z
+    .enum(['default', 'monthly', 'heatmap', 'pulse', 'languages'])
+    .catch('default')
+    .default('default'),
   // Invalid delta formats fall back to percentage mode.
   delta_format: z.enum(['percent', 'absolute', 'both']).catch('percent').default('percent'),
   width: dimensionParam('width', 100, 1200),
@@ -304,7 +312,7 @@ const baseStreakParamsSchema = z.object({
     .transform((val) => (val ? sanitizeHexColor(val, '7f8c8d') : undefined)),
   versus: z
     .string()
-    .max(39, { message: 'GitHub username cannot exceed 39 characters' })
+    .max(39, { message: 'Versus username cannot exceed 39 characters' })
     .optional()
     .refine(
       (val) => {
@@ -329,14 +337,20 @@ const baseStreakParamsSchema = z.object({
       return val === 'true';
     })
     .default(false),
-  gradient_stops: z.string().optional(),
+  gradient_stops: z
+    .string()
+    .max(200, {
+      message: 'gradient_stops cannot exceed 200 characters',
+    })
+    .optional(),
   gradient_dir: z.enum(['vertical', 'horizontal', 'diagonal']).catch('vertical').optional(),
   disable_particles: z
     .string()
     .optional()
     .transform((val) => val === 'true' || val === '1'),
+
   // Glow effect — on by default. Accepts 'true'/'1' (true) or 'false' (false).
-  glow: z.string().optional().transform(toBooleanFlag).default(true),
+  glow: z.string().optional().transform(toGlowFlag).default(true),
   opacity: z.string().optional().transform(toOpacityValue),
   entrance: z.enum(['rise', 'fade', 'slide', 'none']).catch('rise').default('rise'),
   badges: z.string().optional().transform(toBooleanFlag).default(false),

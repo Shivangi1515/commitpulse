@@ -1,10 +1,17 @@
 // lib/svg/generator.ts
 
-import type { BadgeParams, ContributionCalendar, StreakStats, MonthlyStats } from '../../types';
+import type {
+  BadgeParams,
+  ContributionCalendar,
+  StreakStats,
+  MonthlyStats,
+  RepoContribution,
+} from '../../types';
 import { getLabels, type BadgeLabels } from '../i18n/badgeLabels';
 import { AUTO_THEME_DARK, AUTO_THEME_LIGHT, themes } from './themes';
 import { getTowerAnimationCSS } from './animations';
 import { computeTowers, type TowerData } from './layout';
+import { LANGUAGE_COLORS } from './languageColors';
 import {
   sanitizeFont,
   sanitizeHexColor,
@@ -68,10 +75,11 @@ export function truncateUsername(username: string): string {
   return username.length > 12 ? `${username.slice(0, 12)}...` : username;
 }
 
-export function deterministicRandom(seed: string): number {
+export function deterministicRandom(seed?: string | null): number {
+  const safeSeed = seed || '';
   let hash = 2166136261;
-  for (let i = 0; i < seed.length; i++) {
-    hash ^= seed.charCodeAt(i);
+  for (let i = 0; i < safeSeed.length; i++) {
+    hash ^= safeSeed.charCodeAt(i);
     hash = Math.imul(hash, 16777619);
   }
   return (hash >>> 0) / 4294967296;
@@ -102,8 +110,8 @@ export function escapeXML(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
-export function particleCount(count: number): number {
-  if (count === 0) return 0;
+export function particleCount(count?: number | null): number {
+  if (typeof count !== 'number' || count <= 0 || Number.isNaN(count)) return 0;
   return Math.min(5, Math.max(3, Math.floor(count / 4)));
 }
 
@@ -2723,5 +2731,137 @@ export function generateRateLimitSVG(
     <text class="label">PEAK_STREAK</text>
     <text y="40" class="stats">—</text>
   </g>
+</svg>`;
+}
+
+export function generateLanguagesSVG(
+  stats: StreakStats,
+  params: BadgeParams,
+  repoContributions: RepoContribution[]
+): string {
+  const safeUser = escapeXML(params.user || 'GitHub User');
+  const bg = `#${sanitizeHexColor(params.bg, '0d1117')}`;
+
+  const accentRaw = Array.isArray(params.accent)
+    ? params.accent[params.accent.length - 1]
+    : params.accent;
+  const accentStr = accentRaw || '00ffaa';
+  const accent = `#${sanitizeHexColor(accentStr, '00ffaa')}`;
+
+  const text = `#${sanitizeHexColor(params.text, 'ffffff')}`;
+  const borderAttr = params.border ? `stroke="#${params.border}" stroke-width="2"` : '';
+
+  const sanitizedFont = sanitizeFont(params.font);
+  const selectedFont = resolveFont(sanitizedFont);
+  const isPredefinedFont = isBundledFont(sanitizedFont);
+  const statsFont = selectedFont || '"Space Grotesk", sans-serif';
+  const googleFontUrlPart =
+    sanitizedFont && !isPredefinedFont ? sanitizeGoogleFontUrl(sanitizedFont) : null;
+  const googleFontsImport = googleFontUrlPart
+    ? `@import url('https://fonts.googleapis.com/css2?family=${googleFontUrlPart}&amp;display=swap');`
+    : '';
+
+  const sf = getSizeScale(params.size);
+  const radius = sanitizeRadius(params.radius, 8) * sf;
+  const labels = getLabels(params.lang);
+  const W = Math.round(SVG_WIDTH * sf);
+  const H = Math.round(SVG_HEIGHT * sf);
+  const safeId = safeUser.replace(/[^a-zA-Z0-9-]/g, '_').toLowerCase();
+
+  const langCounts: Record<string, number> = {};
+  repoContributions.forEach((c) => {
+    const l = c.repository.primaryLanguage?.name;
+    if (l) langCounts[l] = (langCounts[l] || 0) + c.contributions.totalCount;
+  });
+
+  const total = Object.values(langCounts).reduce((a, b) => a + b, 0);
+
+  if (total === 0) {
+    return `
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${W} ${H}" fill="none" role="img" aria-labelledby="cp-title-${safeId}">
+  ${renderHeader(safeUser, stats, sf, params, safeId)}
+  ${renderStyle(selectedFont, statsFont, googleFontsImport, text, accent, sf, bg, params.entrance || 'rise')}
+  <rect width="${W}" height="${H}" rx="${radius}" fill="${params.hideBackground ? 'transparent' : bg}" ${borderAttr} />
+  <text x="${W / 2}" y="${H / 2}" text-anchor="middle" font-family='${statsFont}' font-size="${16 * sf}px" fill="${text}" opacity="0.6">No language data available in the selected period.</text>
+  ${renderFooter(stats, params, labels, safeUser, accent, sf)}
+</svg>`;
+  }
+
+  const languages = Object.entries(langCounts)
+    .map(([name, count]) => ({
+      name,
+      percentage: Math.round((count / total) * 100),
+      color: (LANGUAGE_COLORS as Record<string, string>)[name] ?? '#8B949E',
+    }))
+    .sort((a, b) => b.percentage - a.percentage)
+    .slice(0, 5);
+
+  // We use custom isometric pixel coordinates from a center origin
+  // to spread the 5 towers across the canvas.
+  const TOWER_SCALE = 2.5; // Make the 5 language towers much larger than daily contribution tiles
+  const V_SHAPE_COORDS = [
+    { x: 0, y: 0, zIndex: 3 }, // 1st (Center, Front)
+    { x: -80, y: -45, zIndex: 2 }, // 2nd (Left, Mid)
+    { x: 80, y: -45, zIndex: 2 }, // 3rd (Right, Mid)
+    { x: -160, y: -90, zIndex: 1 }, // 4th (Far Left, Back)
+    { x: 160, y: -90, zIndex: 1 }, // 5th (Far Right, Back)
+  ];
+
+  let towersHtml = '';
+  const maxPercent = languages[0]?.percentage || 100;
+
+  // Sort languages by zIndex so we render back-to-front (painter's algorithm)
+  const sortedLanguages = languages
+    .map((lang, idx) => ({
+      ...lang,
+      coord: V_SHAPE_COORDS[idx],
+    }))
+    .sort((a, b) => a.coord.zIndex - b.coord.zIndex);
+
+  sortedLanguages.forEach((lang, idx) => {
+    // W and H are already scaled by sf, so we only scale the coordinate offsets
+    const scaledX = W / 2 + lang.coord.x * sf;
+    const scaledY = H / 2 + (50 + lang.coord.y) * sf;
+    const h = Math.max(30, (lang.percentage / maxPercent) * 140) * sf;
+
+    // Scale up the tower base size
+    const tw = 16 * TOWER_SCALE * sf; // half-width
+    const th = 10 * TOWER_SCALE * sf; // half-height
+
+    const paths = {
+      left: `M0 ${-h} L0 ${th} L${-tw} 0 L${-tw} ${-h - th} Z`,
+      right: `M0 ${-h} L0 ${th} L${tw} 0 L${tw} ${-h - th} Z`,
+      top: `M0 ${-h - th} L${tw} ${-h} L0 ${-h + th} L${-tw} ${-h} Z`,
+    };
+
+    const hexColor = lang.color.startsWith('#') ? lang.color : `#${lang.color}`;
+    const delay = (idx * 0.15).toFixed(3);
+    const tooltip = `${lang.name}: ${lang.percentage}%`;
+
+    towersHtml += `
+        <g transform="translate(${scaledX}, ${scaledY})">
+          <g class="cp-tower interactive-tower" style="animation-delay: ${delay}s;">
+            <title>${escapeXML(tooltip)}</title>
+            <path d="${paths.left}" fill="${hexColor}" fill-opacity="0.85" />
+            <path d="${paths.right}" fill="${hexColor}" fill-opacity="0.65" />
+            <path d="${paths.top}" fill="${hexColor}" fill-opacity="1.0" />
+            
+            <text x="0" y="${-h - th - 18 * sf}" text-anchor="middle" font-family='${statsFont}' font-size="${14 * sf}px" fill="${text}" font-weight="bold">${lang.name}</text>
+            <text x="0" y="${-h - th - 4 * sf}" text-anchor="middle" font-family='${statsFont}' font-size="${12 * sf}px" fill="${text}" opacity="0.6">${lang.percentage}%</text>
+          </g>
+        </g>`;
+  });
+
+  return `
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" viewBox="0 0 ${W} ${H}" fill="none" role="img" aria-labelledby="cp-title-${safeId}" aria-describedby="cp-desc-${safeId}">
+  ${renderHeader(safeUser, stats, sf, params, safeId)}
+  ${renderStyle(selectedFont, statsFont, googleFontsImport, text, accent, sf, bg, params.entrance || 'rise')}
+  <rect width="${W}" height="${H}" rx="${radius}" fill="${params.hideBackground ? 'transparent' : bg}" ${borderAttr} />
+  
+  <g id="cp-towers" style="transform-origin: center; transform-box: fill-box;">
+    ${towersHtml}
+  </g>
+  
+  ${renderFooter(stats, params, labels, safeUser, accent, sf)}
 </svg>`;
 }

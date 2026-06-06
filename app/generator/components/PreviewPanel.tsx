@@ -130,7 +130,13 @@ export function PreviewPanel({ markdown }: PreviewPanelProps) {
           </div>
         ) : (
           <div className="relative h-full">
-            <pre className="p-5 text-xs font-mono leading-relaxed text-gray-700 dark:text-white/70 whitespace-pre-wrap break-words overflow-auto h-full select-all">
+            <pre
+              className="p-5 text-xs font-mono leading-relaxed text-gray-700 dark:text-white/70 whitespace-pre-wrap overflow-auto h-full select-all"
+              style={{
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
+              }}
+            >
               {markdown}
             </pre>
           </div>

@@ -197,6 +197,17 @@ describe('RateLimiter', () => {
     expect(await limiter.check('5.5.5.5')).toBe(true);
   });
 
+  it('reset() clears the rate-limited counter for an IP', async () => {
+    const limiter = new RateLimiter(2, 60000);
+
+    await limiter.check('7.7.7.7');
+    await limiter.check('7.7.7.7');
+    expect(await limiter.check('7.7.7.7')).toBe(false); // blocked
+
+    await limiter.reset('7.7.7.7');
+    expect(await limiter.check('7.7.7.7')).toBe(true); // unblocked after reset
+  });
+
   it('does not reset the window TTL on each request (fixed window)', async () => {
     const windowMs = 60000;
     const limiter = new RateLimiter(5, windowMs);

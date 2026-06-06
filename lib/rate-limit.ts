@@ -141,6 +141,22 @@ export class RateLimiter {
    * rateLimiter.reset("192.168.1.1");
    */
   async reset(ip: string): Promise<void> {
+    const url = process.env.KV_REST_API_URL;
+    const token = process.env.KV_REST_API_TOKEN;
+
+    if (url && token) {
+      try {
+        await fetch(`${url}/del/ratelimit_class:${ip}`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      } catch (error) {
+        console.error('RateLimiter KV reset error:', error);
+      }
+    }
+
     await this.cache.delete(ip);
   }
 
