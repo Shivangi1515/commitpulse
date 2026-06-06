@@ -196,6 +196,38 @@ export async function fetchWithRetry(
   return fetchWithRetry(url, options, attempt + 1, timeoutMs);
 }
 
+const GRAPHQL_INJECTION_PATTERNS: RegExp[] = [
+  /;\s*DROP/i,
+  /;\s*DELETE/i,
+  /;\s*TRUNCATE/i,
+  /union\s+select/i,
+  /exec\s*\(/i,
+];
+
+function assertValidGraphQLBody(options: RequestInit): void {
+  if (typeof options.body !== 'string') return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(options.body);
+  } catch {
+    throw new Error('GraphQL request body is not valid JSON');
+  }
+  const query = (parsed as Record<string, unknown>)?.query;
+  if (typeof query !== 'string' || query.trim() === '') {
+    throw new Error('GraphQL request must include a non-empty query string');
+  }
+  for (const pattern of GRAPHQL_INJECTION_PATTERNS) {
+    if (pattern.test(query)) {
+      throw new Error('GraphQL query contains disallowed patterns');
+    }
+  }
+  const open = (query.match(/{/g) ?? []).length;
+  const close = (query.match(/}/g) ?? []).length;
+  if (open === 0 || open !== close) {
+    throw new Error('GraphQL query has unbalanced braces');
+  }
+}
+
 // Wraps fetchWithRetry to also retry on GraphQL-level RATE_LIMITED errors
 // that GitHub returns with HTTP 200 OK instead of 429.
 async function fetchGraphQLWithRetry(
@@ -204,6 +236,7 @@ async function fetchGraphQLWithRetry(
   attempt = 0,
   timeoutMs?: number
 ): Promise<Response> {
+  if (attempt === 0) assertValidGraphQLBody(options);
   const res = await fetchWithRetry(url, options, attempt, timeoutMs);
   if (!res.ok || attempt >= MAX_RETRIES) return res;
 
