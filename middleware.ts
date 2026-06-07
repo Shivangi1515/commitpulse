@@ -4,40 +4,24 @@ import { rateLimit } from './lib/rate-limit';
 import { getClientIp } from './utils/getClientIp';
 
 /**
- * Middleware to enforce rate limiting on specific API routes.
+ * Next.js middleware — rate-limits all matched API routes.
  *
- * Protected Routes:
- * - /api/streak
- * - /api/github
- * - /api/track-user
- * - /api/stats
- * - /api/og
- * - /api/notify
- * - /api/compare
- * - /api/wrapped
- * - /api/student
+ * Next.js requires this file to be named `middleware.ts` at the project root
+ * and to export a function named `middleware` (and optionally `config`).
  *
- * General limit : 60 requests per minute per IP.
- * Refresh limit : 5 requests per minute per IP (when ?refresh=true).
- *
- * The refresh-specific limit is checked first. If it is exceeded the request
- * is rejected immediately with a 429 and the general counter is NOT consumed,
- * which avoids accidentally burning a user's normal quota on blocked refreshes.
+ * @see https://nextjs.org/docs/app/building-your-application/routing/middleware
  */
-export async function middleware(request: NextRequest) {
-  // Secure client IP extraction
+export async function middleware(request: NextRequest): Promise<NextResponse> {
   const ip = getClientIp(request);
 
-  const isRefresh = request.nextUrl.searchParams.get('refresh') === 'true';
+  const isRefresh =
+    request.nextUrl.searchParams.get('refresh') === 'true' ||
+    request.nextUrl.searchParams.get('bypassCache') === 'true';
 
   if (isRefresh) {
-    // Stricter limit: 5 cache-bypass requests per minute per IP.
-    // Uses a separate key prefix so it doesn't share counters with the
-    // general rate limiter.
     const refreshResult = await rateLimit(`refresh:${ip}`, 5, 60000);
 
     if (!refreshResult.success) {
-      // Return early — do NOT consume the general-limiter quota for a blocked refresh.
       const resp = NextResponse.json(
         { error: 'Too many refresh requests. Please wait before bypassing the cache again.' },
         { status: 429 }
@@ -50,7 +34,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // General limit: 60 requests per 60,000 ms (1 minute)
   const result = await rateLimit(ip, 60, 60000);
 
   if (!result.success) {
@@ -68,7 +51,6 @@ export async function middleware(request: NextRequest) {
     );
   }
 
-  // Add rate limit headers to the response for successful requests
   const response = NextResponse.next();
   response.headers.set('X-RateLimit-Limit', result.limit.toString());
   response.headers.set('X-RateLimit-Remaining', result.remaining.toString());
@@ -77,10 +59,6 @@ export async function middleware(request: NextRequest) {
   return response;
 }
 
-/**
- * Configure which routes should trigger this middleware.
- * Using a matcher is more efficient than checking pathnames inside the middleware.
- */
 export const config = {
   matcher: [
     '/api/streak/:path*',

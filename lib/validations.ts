@@ -14,6 +14,11 @@ export function toBooleanFlag(val?: string): boolean {
   return val === 'true' || val === '1';
 }
 
+export function toGlowFlag(val?: string): boolean {
+  if (val === undefined) return true;
+  return val === 'true' || val === '1';
+}
+
 export function toRefreshFlag(val?: string): boolean {
   return val === 'true';
 }
@@ -37,9 +42,16 @@ export function toValidHexColor(defaultColor: string) {
     val && isValidHex(val) ? sanitizeHexColor(val, defaultColor) : undefined;
 }
 
+/**
+ * Parses the ?grace= URL parameter.
+ * Uses parseFloat() — the standard for all numeric URL param parsers in this
+ * file — so that partial strings like '2abc' parse as 2 rather than NaN,
+ * and empty string correctly returns NaN (triggering the default fallback).
+ * Clamps to [0, 7]. Default: 1.
+ */
 export function toGraceValue(val?: string): number {
   if (!val) return 1;
-  const parsed = Number(val);
+  const parsed = parseFloat(val);
   return isNaN(parsed) ? 1 : Math.max(0, Math.min(parsed, 7));
 }
 
@@ -130,6 +142,11 @@ const baseStreakParamsSchema = z.object({
         }
       }
     }),
+
+  label: z
+    .string()
+    .optional()
+    .transform((v) => v !== 'false'),
 
   theme: z
     .string()
@@ -264,13 +281,17 @@ const baseStreakParamsSchema = z.object({
       { message: 'Invalid "date" format. Use ISO 8601.' }
     ),
   refresh: z.string().optional().transform(toRefreshFlag),
+  bypassCache: z.string().optional().transform(toRefreshFlag),
   hide_title: z.string().optional().transform(toBooleanFlag),
   hide_background: z.string().optional().transform(toBooleanFlag),
   hide_stats: z.string().optional().transform(toBooleanFlag),
   lang: z.enum(supportedLanguages).catch('en').default('en'),
   tz: timeZoneParam,
   // Unknown view values fall back to the default dashboard view.
-  view: z.enum(['default', 'monthly', 'heatmap', 'pulse']).catch('default').default('default'),
+  view: z
+    .enum(['default', 'monthly', 'heatmap', 'pulse', 'languages', 'constellation'])
+    .catch('default')
+    .default('default'),
   // Invalid delta formats fall back to percentage mode.
   delta_format: z.enum(['percent', 'absolute', 'both']).catch('percent').default('percent'),
   width: dimensionParam('width', 100, 1200),
@@ -304,7 +325,7 @@ const baseStreakParamsSchema = z.object({
     .transform((val) => (val ? sanitizeHexColor(val, '7f8c8d') : undefined)),
   versus: z
     .string()
-    .max(39, { message: 'GitHub username cannot exceed 39 characters' })
+    .max(39, { message: 'Versus username cannot exceed 39 characters' })
     .optional()
     .refine(
       (val) => {
@@ -321,6 +342,7 @@ const baseStreakParamsSchema = z.object({
       return val === 'true';
     })
     .default(false),
+  dim_weekends: z.string().optional().transform(toBooleanFlag).default(false),
   gradient: z
     .string()
     .optional()
@@ -329,14 +351,20 @@ const baseStreakParamsSchema = z.object({
       return val === 'true';
     })
     .default(false),
-  gradient_stops: z.string().optional(),
+  gradient_stops: z
+    .string()
+    .max(200, {
+      message: 'gradient_stops cannot exceed 200 characters',
+    })
+    .optional(),
   gradient_dir: z.enum(['vertical', 'horizontal', 'diagonal']).catch('vertical').optional(),
   disable_particles: z
     .string()
     .optional()
     .transform((val) => val === 'true' || val === '1'),
+
   // Glow effect — on by default. Accepts 'true'/'1' (true) or 'false' (false).
-  glow: z.string().optional().transform(toBooleanFlag).default(true),
+  glow: z.string().optional().transform(toGlowFlag).default(true),
   opacity: z.string().optional().transform(toOpacityValue),
   entrance: z.enum(['rise', 'fade', 'slide', 'none']).catch('rise').default('rise'),
   badges: z.string().optional().transform(toBooleanFlag).default(false),
@@ -377,6 +405,7 @@ export const githubParamsSchema = z.object({
       message: 'Invalid GitHub username',
     }),
   refresh: z.string().optional().transform(toRefreshFlag),
+  bypassCache: z.string().optional().transform(toRefreshFlag),
 });
 
 export const compareParamsSchema = z
@@ -432,6 +461,7 @@ export const ogParamsSchema = z
       .transform(toEmptyStringAsUndefined)
       .transform(toValidHexColor('000000')),
     refresh: z.string().optional().transform(toRefreshFlag),
+    bypassCache: z.string().optional().transform(toRefreshFlag),
   })
   .transform((data) => ({
     ...data,
@@ -447,6 +477,7 @@ export const statsParamsSchema = z.object({
       message: 'Invalid GitHub username',
     }),
   refresh: z.string().optional().transform(toRefreshFlag),
+  bypassCache: z.string().optional().transform(toRefreshFlag),
   tz: timeZoneParam,
 });
 
@@ -528,6 +559,7 @@ export const wrappedParamsSchema = z.object({
     .optional()
     .transform((val) => sanitizeFont(val) || undefined),
   refresh: z.string().optional().transform(toRefreshFlag),
+  bypassCache: z.string().optional().transform(toRefreshFlag),
   hide_title: z.string().optional().transform(toBooleanFlag),
   hide_background: z.string().optional().transform(toBooleanFlag), // ✅ Fixed: was toRefreshFlag
   width: dimensionParam('width', 100, 1200),
@@ -628,6 +660,34 @@ export const resumeConfirmDataSchema = z.object({
       items.filter((x) => x.company || x.role || x.startDate || x.endDate || x.description)
     ),
 });
+
+export const reviewPostSchema = z.object({
+  name: z
+    .string({ error: 'Name is required.' })
+    .trim()
+    .min(1, { message: 'Name is required.' })
+    .max(100, { message: 'Name must be at most 100 characters.' }),
+  handle: z
+    .string({ error: 'Handle is required.' })
+    .trim()
+    .min(1, { message: 'Handle is required.' })
+    .max(50, { message: 'Handle must be at most 50 characters.' })
+    .regex(/^@?[\w.-]+$/, { message: 'Handle must be a valid username.' }),
+  platform: z.enum(['twitter', 'github'], {
+    message: 'Platform must be twitter or github.',
+  }),
+  message: z
+    .string({ error: 'Message is required.' })
+    .trim()
+    .min(10, { message: 'Message must be at least 10 characters.' })
+    .max(1000, { message: 'Message must be at most 1000 characters.' }),
+  accentColor: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/, { message: 'Accent color must be a valid hex color.' })
+    .default('#10b981'),
+});
+
+export type ReviewPostParams = z.infer<typeof reviewPostSchema>;
 
 export type StreakParams = z.infer<typeof streakParamsSchema>;
 export type GithubParams = z.infer<typeof githubParamsSchema>;

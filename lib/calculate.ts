@@ -1,11 +1,5 @@
 // lib/calculate.ts
-import type {
-  ContributionCalendar,
-  ContributionDay,
-  ContributionWeek,
-  StreakStats,
-  MonthlyStats,
-} from '../types';
+import type { ContributionCalendar, ContributionDay, StreakStats, MonthlyStats } from '../types';
 
 /* ==========================================================================
  * STREAK & CALENDAR CALCULATIONS
@@ -275,7 +269,7 @@ export function aggregateCalendars(calendars: ContributionCalendar[]): Contribut
 
   missingDays.sort((a, b) => a.date.localeCompare(b.date));
   for (const day of missingDays) {
-    aggregatedBase.weeks.unshift({
+    aggregatedBase.weeks.push({
       contributionDays: [day],
     });
   }
@@ -324,6 +318,9 @@ export function calculateWrappedStats(calendar: ContributionCalendar) {
     mostActiveDate: mostActiveDay.date,
     highestDailyCount: mostActiveDay.count,
     busiestMonth: busiestMonthStr,
-    weekendRatio: Math.round((weekendCommits / (weekendCommits + weekdayCommits || 1)) * 100),
+    weekendRatio: (() => {
+      const total = weekendCommits + weekdayCommits;
+      return total > 0 ? Math.round((weekendCommits / total) * 100) : 0;
+    })(),
   };
 }

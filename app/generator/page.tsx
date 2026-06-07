@@ -1,7 +1,8 @@
+import type React from 'react';
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { GeneratorClient } from './GeneratorClient';
-import { Code2, Share2 } from 'lucide-react';
+import { Code2, Share2, Sparkles, BarChart3 } from 'lucide-react';
 import { Footer } from '../components/Footer';
 
 export const metadata: Metadata = {
@@ -18,11 +19,11 @@ function GeneratorSkeleton() {
   return (
     <div className="flex flex-col lg:flex-row gap-5 xl:gap-6 items-start w-full animate-pulse">
       <div className="w-full lg:w-[44%] xl:w-[42%] flex-shrink-0 space-y-4">
-        {[140, 120, 280, 180, 200].map((h, i) => (
+        {[140, 120, 280, 180, 200].map((height) => (
           <div
-            key={i}
+            key={height}
             className="rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-[#111111]"
-            style={{ height: h }}
+            style={{ height }}
           />
         ))}
       </div>
@@ -77,6 +78,18 @@ export default function GeneratorPage() {
                 <Share2 className="size-5" />
               </span>
               50+ social platforms
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/8 text-[11px] font-medium text-gray-600 dark:text-white/55 select-none">
+              <span className="text-sm leading-none">
+                <Sparkles className="size-5" />
+              </span>
+              Badge recommendations
+            </span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/8 text-[11px] font-medium text-gray-600 dark:text-white/55 select-none">
+              <span className="text-sm leading-none">
+                <BarChart3 className="size-5" />
+              </span>
+              Live 3D stats
             </span>
           </div>
         </div>
