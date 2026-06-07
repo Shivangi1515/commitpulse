@@ -40,31 +40,83 @@ describe('useGlowEffect - Empty/Missing Inputs Verification', () => {
     expect(result.current.shellVars['--border-opacity']).toBe('0');
   });
 
-  it('does not throw when handleMouseLeave is called before interaction', () => {
+  it('updates target coordinates from mouse movement', () => {
     const { result } = renderHook(() => useGlowEffect());
 
-    expect(() => {
-      result.current.handleMouseLeave();
-    }).not.toThrow();
+    const div = document.createElement('div');
+
+    div.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 100,
+        height: 100,
+      }) as DOMRect;
+
+    result.current.handleMouseMove({
+      clientX: 50,
+      clientY: 25,
+      currentTarget: div,
+    } as unknown as React.MouseEvent<HTMLDivElement>);
+
+    expect(window.requestAnimationFrame).toHaveBeenCalled();
   });
 
-  it('safely ignores mouse move when bounding rect is unavailable', () => {
+  it('starts glow animation when pointer enters and moves', () => {
     const { result } = renderHook(() => useGlowEffect());
 
-    expect(() => {
-      result.current.handleMouseMove({
-        clientX: 10,
-        clientY: 20,
-        currentTarget: {
-          getBoundingClientRect: () => null,
-        },
-      } as unknown as React.MouseEvent<HTMLDivElement>);
-    }).not.toThrow();
+    const div = document.createElement('div');
+
+    div.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 200,
+        height: 100,
+      }) as DOMRect;
+
+    result.current.handleMouseEnter();
+
+    result.current.handleMouseMove({
+      clientX: 100,
+      clientY: 50,
+      currentTarget: div,
+    } as unknown as React.MouseEvent<HTMLDivElement>);
+
+    expect(window.requestAnimationFrame).toHaveBeenCalled();
   });
 
-  it('unmounts cleanly without active animations', () => {
-    const { unmount } = renderHook(() => useGlowEffect());
+  it('continues animation after mouse leave', () => {
+    const { result } = renderHook(() => useGlowEffect());
 
-    expect(() => unmount()).not.toThrow();
+    result.current.handleMouseLeave();
+
+    expect(window.requestAnimationFrame).toHaveBeenCalled();
+  });
+
+  it('cancels animation frame on unmount after active animation', () => {
+    const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame');
+
+    const { result, unmount } = renderHook(() => useGlowEffect());
+
+    const div = document.createElement('div');
+
+    div.getBoundingClientRect = () =>
+      ({
+        left: 0,
+        top: 0,
+        width: 100,
+        height: 100,
+      }) as DOMRect;
+
+    result.current.handleMouseMove({
+      clientX: 40,
+      clientY: 40,
+      currentTarget: div,
+    } as unknown as React.MouseEvent<HTMLDivElement>);
+
+    unmount();
+
+    expect(cancelSpy).toHaveBeenCalled();
   });
 });
