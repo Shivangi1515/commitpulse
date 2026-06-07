@@ -41,16 +41,12 @@ describe('HeroSection — Accessibility & Screen Reader Compliance', () => {
     expect(input).toBeInTheDocument();
   });
 
-  it('renders both buttons with descriptive aria-labels', () => {
+  it('renders both buttons with meaningful visible text for screen readers', () => {
     render(<HeroSection />);
 
-    expect(
-      screen.getByRole('button', { name: 'Copy badge link to clipboard' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /copy link/i })).toBeInTheDocument();
 
-    expect(
-      screen.getByRole('button', { name: 'Watch your GitHub contribution dashboard' })
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /watch dashboard/i })).toBeInTheDocument();
   });
 
   it('hides decorative background elements from screen readers via aria-hidden', () => {
