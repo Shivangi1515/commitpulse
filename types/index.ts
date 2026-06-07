@@ -46,15 +46,51 @@ export interface BadgeTheme {
  * Represents a single day's contribution data returned from the GitHub GraphQL API.
  */
 export interface ContributionDay {
-  /** Number of contributions made on this day. */
+  /** Number of contributions made on this day (commits mode). */
   contributionCount: number;
 
   /** Calendar date of this contribution entry (format: YYYY-MM-DD). */
   date: string;
 
-  // Added for LoC (Lines of Code) Mode
+  /**
+   * Lines of code added on this day.
+   * Only present when data is fetched in LoC mode (`?mode=loc`).
+   * Always `undefined` in standard commits mode.
+   * Use the `isLocDay()` type guard before accessing this field directly.
+   */
   locAdditions?: number;
+
+  /**
+   * Lines of code deleted on this day.
+   * Only present when data is fetched in LoC mode (`?mode=loc`).
+   * Always `undefined` in standard commits mode.
+   * Use the `isLocDay()` type guard before accessing this field directly.
+   */
   locDeletions?: number;
+}
+
+/**
+ * Type guard that narrows a `ContributionDay` to confirm both `locAdditions`
+ * and `locDeletions` are present — i.e. the day was fetched in LoC mode.
+ *
+ * Use this instead of `|| 0` fallbacks to make LoC field access type-safe:
+ *
+ * @example
+ * // Without type guard (unsafe — silent 0 if data missing):
+ * const count = (day.locAdditions || 0) + (day.locDeletions || 0);
+ *
+ * // With type guard (safe — TypeScript guarantees fields are numbers):
+ * if (isLocDay(day)) {
+ *   const count = day.locAdditions + day.locDeletions;
+ * }
+ *
+ * @param day - Any ContributionDay from commits or LoC mode
+ * @returns true if both locAdditions and locDeletions are numbers
+ */
+export function isLocDay(
+  day: ContributionDay
+): day is ContributionDay & { locAdditions: number; locDeletions: number } {
+  return typeof day.locAdditions === 'number' && typeof day.locDeletions === 'number';
 }
 
 /**
