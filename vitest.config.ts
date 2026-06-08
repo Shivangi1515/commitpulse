@@ -8,6 +8,7 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.test.ts', '**/*.test.tsx'],
     exclude: ['node_modules', '.next', '**/*.massive-scaling.test.ts'],
+    maxWorkers: 15,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
