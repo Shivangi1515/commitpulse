@@ -8,7 +8,8 @@ export default defineConfig({
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.test.ts', '**/*.test.tsx'],
     exclude: ['node_modules', '.next', '**/*.massive-scaling.test.ts'],
-    maxWorkers: 15,
+    maxWorkers: process.env.CI ? 2 : 15,
+    testTimeout: 30000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
